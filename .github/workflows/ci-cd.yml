@@ -23,12 +23,14 @@ jobs:
       with:
         fetch-depth: 0  # Fetch full history
 
-    - name: Get base branch
-      id: base_branch
+    - name: Find the first commit of the branch
+      id: first_commit
       run: |
-        echo "::set-output name=BASE_BRANCH::$(git merge-base origin/main HEAD)"
+        # Find the first commit on the current branch by using git merge-base with the parent branch (main)
+        FIRST_COMMIT=$(git rev-list --boundary HEAD...origin/main | grep "^-" | head -n 1 | sed 's/^-//')
+        echo "::set-output name=FIRST_COMMIT::$FIRST_COMMIT"
 
     - name: List all modified files in the branch
       run: |
         echo "The following files were modified in this branch:"
-        git diff --name-only ${{ steps.base_branch.outputs.BASE_BRANCH }} ${{ github.sha }}
+        git diff --name-only ${{ steps.first_commit.outputs.FIRST_COMMIT }} ${{ github.sha }}
