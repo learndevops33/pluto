@@ -1,6 +1,7 @@
 name: mock CI/CD
 
 on:
+  workflow_dispatch: 
   push:
     branches:
       - 'feature/*'
