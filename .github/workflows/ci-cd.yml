@@ -30,19 +30,20 @@ jobs:
         echo "FIRST_COMMIT=$FIRST_COMMIT" >> $GITHUB_ENV
 
     - name: List all modified files in the branch
-      id: changed_files  # ID for output reference
+      id: changed_files
       run: |
         echo "The following files were modified in this branch:"
         MODIFIED_FILES=$(git diff --name-only $FIRST_COMMIT ${{ github.sha }})
         echo "$MODIFIED_FILES"
-        echo "MODIFIED_FILES=$MODIFIED_FILES" >> $GITHUB_ENV  # Save the list of modified files to an environment variable
+        echo "$MODIFIED_FILES" | tr '\n' ',' > files_list.txt  # Save file list as a comma-separated string to a file
+        echo "MODIFIED_FILES=$(cat files_list.txt)" >> $GITHUB_ENV  # Write the comma-separated list to the environment variable
 
     - name: Create directory for modified files
       run: mkdir -p modified_files  # Create a directory to store the modified files
 
     - name: Copy modified files to directory
       run: |
-        for file in $MODIFIED_FILES; do
+        for file in $(echo $MODIFIED_FILES | tr ',' '\n'); do
           mkdir -p $(dirname "modified_files/$file")  # Create necessary directories
           cp "$file" "modified_files/$file"  # Copy the modified files to the new directory
         done
