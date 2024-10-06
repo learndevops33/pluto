@@ -71,7 +71,7 @@ jobs:
     - name: Upload artifact with environment name
       uses: actions/upload-artifact@v3
       with:
-        name: modified-files-archive-${{ env.ENVIRONMENT }}-GitHub Actions ${{ github.run_id }}
+        name: modified-files-archive-${{ env.ENVIRONMENT }}-${{ GITHUB_RUN_NUMBER }}
         path: modified_files.zip
 
   deploy:
@@ -81,7 +81,7 @@ jobs:
     - name: Download artifact with environment name
       uses: actions/download-artifact@v3
       with:
-        name: modified-files-archive-${{ needs.build.outputs.ENVIRONMENT }}-GitHub Actions ${{ github.run_id }}  # Use environment name only
+        name: modified-files-archive-${{ needs.build.outputs.ENVIRONMENT }}-${{ GITHUB_RUN_NUMBER }}  # Use environment name only
         path: downloaded_files
 
     - name: Extract and list downloaded files
