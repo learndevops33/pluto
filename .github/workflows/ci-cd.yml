@@ -110,7 +110,6 @@ jobs:
 
       - name: Upload individual artifacts
         run: |
-          # Upload the artifacts listed in artifacts_to_upload.txt
           echo "##[group]Uploading artifacts"
           for artifact in $(cat artifacts_to_upload.txt); do
             echo "Uploading artifact $artifact"
@@ -130,7 +129,7 @@ jobs:
           for program in alpha beta gamma; do
             ARTIFACT_NAME="${program}_modified_files.zip"
             echo "Downloading artifact: $ARTIFACT_NAME"
-            actions/download-artifact@v3
+            # Correct usage of actions/download-artifact
             - name: Download artifact for $program
               uses: actions/download-artifact@v3
               with:
