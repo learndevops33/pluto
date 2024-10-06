@@ -17,10 +17,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    outputs:
-      alpha_files: ${{ steps.set_alpha.outputs.alpha_files }}
-      beta_files: ${{ steps.set_beta.outputs.beta_files }}
-      gamma_files: ${{ steps.set_gamma.outputs.gamma_files }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -66,7 +62,7 @@ jobs:
           echo "$MODIFIED_FILES" | tr '\n' ',' > files_list.txt
           echo "MODIFIED_FILES=$(cat files_list.txt)" >> $GITHUB_ENV
 
-      - name: Set program files
+      - name: Set program files and zip them
         id: set_programs
         run: |
           MODIFIED_FILES="${{ env.MODIFIED_FILES }}"
@@ -104,11 +100,6 @@ jobs:
           zip_and_upload "beta" BETA_FILES[@]
           zip_and_upload "gamma" GAMMA_FILES[@]
 
-          # Set outputs for deploy
-          echo "alpha_files=$(IFS=,; echo "${ALPHA_FILES[*]}")" >> $GITHUB_ENV
-          echo "beta_files=$(IFS=,; echo "${BETA_FILES[*]}")" >> $GITHUB_ENV
-          echo "gamma_files=$(IFS=,; echo "${GAMMA_FILES[*]}")" >> $GITHUB_ENV
-
   deploy:
     needs: build  # Ensure this job runs after build
     runs-on: ubuntu-latest
@@ -123,13 +114,28 @@ jobs:
             echo "##[download-artifact]name=${ARTIFACT_NAME},path=downloaded_files"
           done
 
-      - name: Extract and list downloaded files
+      - name: Download artifacts using actions
         run: |
           for program in alpha beta gamma; do
             ARTIFACT_NAME="${program}_modified_files.zip"
-            unzip downloaded_files/$ARTIFACT_NAME -d "extracted_$program"
-            echo "Contents of $ARTIFACT_NAME:"
-            ls "extracted_$program"
+            echo "Downloading artifact: $ARTIFACT_NAME"
+            # This step downloads the artifact
+            echo "##[download-artifact]name=${ARTIFACT_NAME},path=downloaded_files"
+          done
+        shell: bash
+
+      - name: Extract and list downloaded files
+        run: |
+          echo "Extracting and listing downloaded files..."
+          for program in alpha beta gamma; do
+            ARTIFACT_NAME="${program}_modified_files.zip"
+            if [ -f "downloaded_files/$ARTIFACT_NAME" ]; then
+              unzip "downloaded_files/$ARTIFACT_NAME" -d "extracted_$program"
+              echo "Contents of $ARTIFACT_NAME:"
+              ls "extracted_$program"
+            else
+              echo "Artifact $ARTIFACT_NAME does not exist."
+            fi
           done
 
       - name: Deployment into server
