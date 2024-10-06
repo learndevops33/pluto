@@ -23,8 +23,7 @@ jobs:
       with:
         fetch-depath: 0
 
-    - name: Get the list of modified files
+    - name: List modified files
       run: |
         echo "The following files were modified in this commit:"
-        git diff --name-only $(git rev-parse HEAD^) $(git rev-parse HEAD)
-  
+        git diff --name-only ${{ github.event.before }} ${{ github.sha }}
