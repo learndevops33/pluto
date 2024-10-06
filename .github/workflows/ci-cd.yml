@@ -17,6 +17,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      ENVIRONMENT: ${{ steps.set_env.outputs.ENVIRONMENT }}  # Output environment for other jobs to access
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -24,15 +26,14 @@ jobs:
         fetch-depth: 0  # Fetch full history
 
     - name: Set environment based on the branch or PR
+      id: set_env
       run: |
-        # Check if it's a pull request and use GITHUB_HEAD_REF
         if [[ "${{ github.event_name }}" == "pull_request" ]]; then
           BRANCH="${{ github.head_ref }}"
         else
           BRANCH="${{ github.ref_name }}"
         fi
 
-        # Determine the environment based on the branch
         if [[ "$BRANCH" == feature/* || "$BRANCH" == bugfix/* ]]; then
           ENVIRONMENT="dev"
         elif [[ "$BRANCH" == release/* ]]; then
@@ -45,14 +46,13 @@ jobs:
         fi
         echo "environment is set to $ENVIRONMENT"
         echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_ENV
-      shell: bash
+        echo "::set-output name=ENVIRONMENT::$ENVIRONMENT"  # Output the environment for future jobs
 
     - name: Show selected environment
       run: echo "Deployment environment is $ENVIRONMENT"
 
     - name: Find the first commit of the branch
       run: |
-        # Find the first commit on the current branch by using git merge-base with the parent branch (main)
         FIRST_COMMIT=$(git rev-list --boundary HEAD...origin/main | grep "^-" | head -n 1 | sed 's/^-//')
         echo "FIRST_COMMIT=$FIRST_COMMIT" >> $GITHUB_ENV
 
@@ -62,33 +62,32 @@ jobs:
         echo "The following files were modified in this branch:"
         MODIFIED_FILES=$(git diff --name-only $FIRST_COMMIT ${{ github.sha }})
         echo "$MODIFIED_FILES"
-        echo "$MODIFIED_FILES" | tr '\n' ',' > files_list.txt  # Save file list as a comma-separated string to a file
-        echo "MODIFIED_FILES=$(cat files_list.txt)" >> $GITHUB_ENV  # Write the comma-separated list to the environment variable
+        echo "$MODIFIED_FILES" | tr '\n' ',' > files_list.txt
+        echo "MODIFIED_FILES=$(cat files_list.txt)" >> $GITHUB_ENV
 
     - name: Zip the modified files
       run: |
         for file in $(echo $MODIFIED_FILES | tr ',' '\n'); do
-          # Zip only the modified files and preserve folder structure
           zip -r modified_files.zip "$file"
         done
 
     - name: Upload artifact with environment name and runner ID
       uses: actions/upload-artifact@v3
       with:
-        name: modified-files-archive-${{ env.ENVIRONMENT }}-${{ runner.name }}  # Add runner name to artifact
+        name: modified-files-archive-${{ env.ENVIRONMENT }}-${{ runner.name }}
         path: modified_files.zip
 
   download_artifact:
-    needs: build  # Make sure this job runs after build
+    needs: build  # Ensure this job runs after build
     runs-on: ubuntu-latest
     steps:
     - name: Download artifact with environment name and runner ID
       uses: actions/download-artifact@v3
       with:
         name: modified-files-archive-${{ needs.build.outputs.ENVIRONMENT }}-${{ runner.name }}  # Use environment name and runner ID
-        path: downloaded_files  # Where the artifact will be downloaded
+        path: downloaded_files
 
     - name: Extract and list downloaded files
       run: |
-        unzip downloaded_files/modified_files.zip -d extracted_files  # Extract the artifact
-        ls extracted_files  # List the extracted files for verification
+        unzip downloaded_files/modified_files.zip -d extracted_files
+        ls extracted_files
