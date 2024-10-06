@@ -17,6 +17,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      alpha_files: ${{ steps.set_alpha.outputs.alpha_files }}
+      beta_files: ${{ steps.set_beta.outputs.beta_files }}
+      gamma_files: ${{ steps.set_gamma.outputs.gamma_files }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -62,17 +66,14 @@ jobs:
           echo "$MODIFIED_FILES" | tr '\n' ',' > files_list.txt
           echo "MODIFIED_FILES=$(cat files_list.txt)" >> $GITHUB_ENV
 
-      - name: Run actions based on modified files
+      - name: Set program files
+        id: set_programs
         run: |
-          echo "Running actions based on modified files..."
           MODIFIED_FILES="${{ env.MODIFIED_FILES }}"
-
-          # Initialize arrays for each program's modified files
           ALPHA_FILES=()
           BETA_FILES=()
           GAMMA_FILES=()
 
-          # Populate the arrays based on modified files
           IFS=',' read -ra FILE_ARRAY <<< "$MODIFIED_FILES"
           for file in "${FILE_ARRAY[@]}"; do
             if [[ "$file" == alpha/* ]]; then
@@ -84,40 +85,29 @@ jobs:
             fi
           done
 
-          # Function to zip and upload artifacts
+          # Zip and upload artifacts for each program
           function zip_and_upload {
             PROGRAM_NAME=$1
-            FILES=("${!2}")  # Use indirect reference to get array
-
+            FILES=("${!2}")
+            ZIP_NAME="${PROGRAM_NAME}_modified_files.zip"
             if [ ${#FILES[@]} -gt 0 ]; then
-              ZIP_NAME="${PROGRAM_NAME}_modified_files.zip"
               zip -r "$ZIP_NAME" "${FILES[@]}"
               echo "Zipped $PROGRAM_NAME files into $ZIP_NAME"
               echo "Uploading $ZIP_NAME as artifact..."
-              # Upload the artifact using actions/upload-artifact
-              echo "name=${ZIP_NAME}" >> $GITHUB_ENV
-              echo "path=${ZIP_NAME}" >> $GITHUB_ENV
               echo "##[upload-artifact]name=${ZIP_NAME},path=${ZIP_NAME}" >> $GITHUB_ENV
             else
               echo "No modified files for $PROGRAM_NAME."
             fi
           }
 
-          # Zip and upload artifacts for each program
           zip_and_upload "alpha" ALPHA_FILES[@]
           zip_and_upload "beta" BETA_FILES[@]
           zip_and_upload "gamma" GAMMA_FILES[@]
 
-      - name: Upload individual artifacts
-        run: |
-          echo "##[group]Uploading artifacts"
-          for artifact in $(cat artifacts_to_upload.txt); do
-            echo "Uploading artifact $artifact"
-            # Use the actions/upload-artifact action to upload each artifact
-            echo "name=${artifact}" >> $GITHUB_ENV
-            echo "path=${artifact}" >> $GITHUB_ENV
-          done
-          echo "##[endgroup]"
+          # Set outputs for deploy
+          echo "alpha_files=$(IFS=,; echo "${ALPHA_FILES[*]}")" >> $GITHUB_ENV
+          echo "beta_files=$(IFS=,; echo "${BETA_FILES[*]}")" >> $GITHUB_ENV
+          echo "gamma_files=$(IFS=,; echo "${GAMMA_FILES[*]}")" >> $GITHUB_ENV
 
   deploy:
     needs: build  # Ensure this job runs after build
@@ -129,12 +119,8 @@ jobs:
           for program in alpha beta gamma; do
             ARTIFACT_NAME="${program}_modified_files.zip"
             echo "Downloading artifact: $ARTIFACT_NAME"
-            # Correct usage of actions/download-artifact
-            - name: Download artifact for $program
-              uses: actions/download-artifact@v3
-              with:
-                name: $ARTIFACT_NAME
-                path: downloaded_files
+            # Correctly call the action to download the artifact
+            echo "##[download-artifact]name=${ARTIFACT_NAME},path=downloaded_files"
           done
 
       - name: Extract and list downloaded files
