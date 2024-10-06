@@ -94,8 +94,10 @@ jobs:
               zip -r "$ZIP_NAME" "${FILES[@]}"
               echo "Zipped $PROGRAM_NAME files into $ZIP_NAME"
               echo "Uploading $ZIP_NAME as artifact..."
-              # Upload each artifact separately
-              echo "$ZIP_NAME" >> artifacts_to_upload.txt
+              # Upload the artifact using actions/upload-artifact
+              echo "name=${ZIP_NAME}" >> $GITHUB_ENV
+              echo "path=${ZIP_NAME}" >> $GITHUB_ENV
+              echo "##[upload-artifact]name=${ZIP_NAME},path=${ZIP_NAME}" >> $GITHUB_ENV
             else
               echo "No modified files for $PROGRAM_NAME."
             fi
@@ -109,34 +111,42 @@ jobs:
       - name: Upload individual artifacts
         run: |
           # Upload the artifacts listed in artifacts_to_upload.txt
-          while IFS= read -r artifact; do
-            echo "Uploading artifact: $artifact"
+          echo "##[group]Uploading artifacts"
+          for artifact in $(cat artifacts_to_upload.txt); do
+            echo "Uploading artifact $artifact"
             # Use the actions/upload-artifact action to upload each artifact
             echo "name=${artifact}" >> $GITHUB_ENV
             echo "path=${artifact}" >> $GITHUB_ENV
-          done < artifacts_to_upload.txt
-          for artifact in $(cat artifacts_to_upload.txt); do
-            echo "Uploading artifact $artifact"
-            # Replace this with the actual upload command if needed
-            # Here we're just using a placeholder echo for demonstration
-            echo "Uploaded $artifact"  # Simulate upload
           done
+          echo "##[endgroup]"
 
   deploy:
     needs: build  # Ensure this job runs after build
     runs-on: ubuntu-latest
     steps:
-      - name: Download artifact with environment name
-        uses: actions/download-artifact@v3
-        with:
-          name: modified-files-archive-${{ needs.build.outputs.ENVIRONMENT }}  # Use environment name only
-          path: downloaded_files
+      - name: Download individual artifacts for deployment
+        run: |
+          echo "Downloading artifacts..."
+          for program in alpha beta gamma; do
+            ARTIFACT_NAME="${program}_modified_files.zip"
+            echo "Downloading artifact: $ARTIFACT_NAME"
+            actions/download-artifact@v3
+            - name: Download artifact for $program
+              uses: actions/download-artifact@v3
+              with:
+                name: $ARTIFACT_NAME
+                path: downloaded_files
+          done
 
       - name: Extract and list downloaded files
         run: |
-          unzip downloaded_files/modified_files.zip -d extracted_files
-          ls extracted_files
+          for program in alpha beta gamma; do
+            ARTIFACT_NAME="${program}_modified_files.zip"
+            unzip downloaded_files/$ARTIFACT_NAME -d "extracted_$program"
+            echo "Contents of $ARTIFACT_NAME:"
+            ls "extracted_$program"
+          done
 
-      - name: deployment into server
+      - name: Deployment into server
         run: |
-          echo "deploying....."
+          echo "Deploying to the ${{ env.ENVIRONMENT }} environment..."
