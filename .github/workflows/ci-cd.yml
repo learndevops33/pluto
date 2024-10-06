@@ -23,18 +23,24 @@ jobs:
       with:
         fetch-depth: 0  # Fetch full history
 
-    - name: Set environment based on the branch
+    - name: Set environment based on the branch or PR
       run: |
-        if [[ "${GITHUB_REF}" == refs/heads/feature/* ]]; then
-          ENVIRONMENT="dev"
-        elif [[ "${GITHUB_REF}" == refs/heads/release/* ]]; then
-          ENVIRONMENT="uat"
-        elif [[ "${GITHUB_REF}" == refs/heads/main ]]; then
-          ENVIRONMENT="prod"
-        elif [[ "${GITHUB_REF}" == refs/heads/hotfix ]]; then
-          ENVIRONMENT="prod"  
+        # Check if it's a pull request and use GITHUB_HEAD_REF
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          BRANCH="${{ github.head_ref }}"
         else
-          echo "Unknown branch $GITHUB_REF, exiting"
+          BRANCH="${{ github.ref_name }}"
+        fi
+
+        # Determine the environment based on the branch
+        if [[ "$BRANCH" == feature/* || "$BRANCH" == bugfix/* ]]; then
+          ENVIRONMENT="dev"
+        elif [[ "$BRANCH" == release/* ]]; then
+          ENVIRONMENT="uat"
+        elif [[ "$BRANCH" == main ]]; then
+          ENVIRONMENT="prod"
+        else
+          echo "Unknown branch, exiting"
           exit 1
         fi
         echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_ENV
