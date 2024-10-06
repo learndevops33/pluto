@@ -17,8 +17,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    outputs:
-      ENVIRONMENT: ${{ steps.set_env.outputs.ENVIRONMENT }}  # Output environment for other jobs to access
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -46,7 +44,6 @@ jobs:
         fi
         echo "environment is set to $ENVIRONMENT"
         echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_ENV
-        echo "::set-output name=ENVIRONMENT::$ENVIRONMENT"  # Output the environment for future jobs
 
     - name: Show selected environment
       run: echo "Deployment environment is $ENVIRONMENT"
@@ -74,20 +71,28 @@ jobs:
     - name: Upload artifact with environment name
       uses: actions/upload-artifact@v3
       with:
-        name: modified-files-archive-${{ env.ENVIRONMENT }}
+        name: modified-files-archive-${{ env.ENVIRONMENT }}-GitHub Actions ${{ github.run_id }}
         path: modified_files.zip
 
-  download_artifact:
+  deploy:
     needs: build  # Ensure this job runs after build
     runs-on: ubuntu-latest
     steps:
     - name: Download artifact with environment name
       uses: actions/download-artifact@v3
       with:
-        name: modified-files-archive-${{ needs.build.outputs.ENVIRONMENT }}  # Use environment name only
+        name: modified-files-archive-${{ needs.build.outputs.ENVIRONMENT }}-GitHub Actions ${{ github.run_id }}  # Use environment name only
         path: downloaded_files
 
     - name: Extract and list downloaded files
       run: |
         unzip downloaded_files/modified_files.zip -d extracted_files
         ls extracted_files
+
+    - name: deployment into server
+      run: |
+        echo "Deploying to the ${{ env.ENVIRONMENT }} environment..."
+        if [[ "${{ env.ENVIRONMENT }}" == "prod" ]]; then
+          echo "Production deployment! Please ensure all checks are passed."
+          # Add any production-specific deployment steps or checks here
+        fi
