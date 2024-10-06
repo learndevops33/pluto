@@ -21,9 +21,14 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
       with:
-        fetch-depth: 0  # Corrected typo here to fetch the full history
+        fetch-depth: 0  # Fetch full history
 
-    - name: List modified files
+    - name: Get base branch
+      id: base_branch
       run: |
-        echo "The following files were modified in this commit:"
-        git diff --name-only ${{ github.event.before }} ${{ github.sha }}
+        echo "::set-output name=BASE_BRANCH::$(git merge-base origin/main HEAD)"
+
+    - name: List all modified files in the branch
+      run: |
+        echo "The following files were modified in this branch:"
+        git diff --name-only ${{ steps.base_branch.outputs.BASE_BRANCH }} ${{ github.sha }}
