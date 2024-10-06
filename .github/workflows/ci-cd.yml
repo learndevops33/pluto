@@ -21,10 +21,16 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
       with:
-        fetch-depath: 0
+        fetch-depth: 0  # Fetch full history
 
-    - name: Get the list of modified files
+    - name: Find the first commit of the branch
+      id: first_commit
       run: |
-        echo "The following files were modified in this commit:"
-        git diff --name-only $(git rev-parse HEAD^) $(git rev-parse HEAD)
-  
+        # Find the first commit on the current branch by using git merge-base with the parent branch (main)
+        FIRST_COMMIT=$(git rev-list --boundary HEAD...origin/main | grep "^-" | head -n 1 | sed 's/^-//')
+        echo "::set-output name=FIRST_COMMIT::$FIRST_COMMIT"
+
+    - name: List all modified files in the branch
+      run: |
+        echo "The following files were modified in this branch:"
+        git diff --name-only ${{ steps.first_commit.outputs.FIRST_COMMIT }} ${{ github.sha }}
