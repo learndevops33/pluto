@@ -38,21 +38,26 @@ jobs:
         echo "$MODIFIED_FILES" | tr '\n' ',' > files_list.txt  # Save file list as a comma-separated string to a file
         echo "MODIFIED_FILES=$(cat files_list.txt)" >> $GITHUB_ENV  # Write the comma-separated list to the environment variable
 
-    - name: Create directory for modified files
-      run: mkdir -p modified_files  # Create a directory to store the modified files
+    - name: Create directory for modified folders
+      run: mkdir -p modified_folders  # Create a directory to store the modified folders
 
-    - name: Copy modified files to directory
+    - name: Copy modified folders to the root of the zip
       run: |
         for file in $(echo $MODIFIED_FILES | tr ',' '\n'); do
-          mkdir -p $(dirname "modified_files/$file")  # Create necessary directories
-          cp "$file" "modified_files/$file"  # Copy the modified files to the new directory
+          # Extract the folder path from the file path
+          folder=$(dirname "$file")
+          # Create the necessary directory structure inside the modified_folders directory
+          mkdir -p "modified_folders/$folder"
+          # Copy the modified file to the appropriate folder
+          cp "$file" "modified_folders/$folder"
         done
 
-    - name: Create zip archive of modified files
-      run: zip -r modified_files.zip modified_files  # Create a zip archive of the modified files
+    - name: Create zip archive of modified folders
+      run: |
+        cd modified_folders && zip -r ../modified_folders.zip .  # Create a zip archive of the modified folders
 
     - name: Upload artifact
       uses: actions/upload-artifact@v3
       with:
-        name: modified-files-archive
-        path: modified_files.zip
+        name: modified-folders-archive
+        path: modified_folders.zip
