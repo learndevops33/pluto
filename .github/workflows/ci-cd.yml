@@ -34,7 +34,7 @@ jobs:
         elif [[ "${GITHUB_REF}" == refs/heads/hotfix ]]; then
           ENVIRONMENT="prod"  
         else
-          echo "Unknown branch, exiting"
+          echo "Unknown branch $GITHUB_REF, exiting"
           exit 1
         fi
         echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_ENV
