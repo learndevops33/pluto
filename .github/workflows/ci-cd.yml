@@ -23,6 +23,33 @@ jobs:
       with:
         fetch-depth: 0  # Fetch full history
 
+    - name: Set environment based on the branch or PR
+      run: |
+        # Check if it's a pull request and use GITHUB_HEAD_REF
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          BRANCH="${{ github.head_ref }}"
+        else
+          BRANCH="${{ github.ref_name }}"
+        fi
+
+        # Determine the environment based on the branch
+        if [[ "$BRANCH" == feature/* || "$BRANCH" == bugfix/* ]]; then
+          ENVIRONMENT="dev"
+        elif [[ "$BRANCH" == release/* ]]; then
+          ENVIRONMENT="uat"
+        elif [[ "$BRANCH" == main ]]; then
+          ENVIRONMENT="prod"
+        else
+          echo "Unknown branch, exiting"
+          exit 1
+        fi
+        echo "environment is set to $ENVIRONMENT"
+        echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Show selected environment
+      run: echo "Deployment environment is $ENVIRONMENT"
+
     - name: Find the first commit of the branch
       run: |
         # Find the first commit on the current branch by using git merge-base with the parent branch (main)
@@ -45,8 +72,8 @@ jobs:
           zip -r modified_files.zip "$file"
         done
 
-    - name: Upload artifact
+    - name: Upload artifact with environment name
       uses: actions/upload-artifact@v3
       with:
-        name: modified-files-archive
+        name: modified-files-archive-${{ env.ENVIRONMENT }}
         path: modified_files.zip
