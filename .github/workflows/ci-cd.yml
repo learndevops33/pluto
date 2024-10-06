@@ -24,13 +24,34 @@ jobs:
         fetch-depth: 0  # Fetch full history
 
     - name: Find the first commit of the branch
-      id: first_commit
       run: |
         # Find the first commit on the current branch by using git merge-base with the parent branch (main)
         FIRST_COMMIT=$(git rev-list --boundary HEAD...origin/main | grep "^-" | head -n 1 | sed 's/^-//')
-        echo "::set-output name=FIRST_COMMIT::$FIRST_COMMIT"
+        echo "FIRST_COMMIT=$FIRST_COMMIT" >> $GITHUB_ENV
 
     - name: List all modified files in the branch
+      id: changed_files  # ID for output reference
       run: |
         echo "The following files were modified in this branch:"
-        git diff --name-only ${{ steps.first_commit.outputs.FIRST_COMMIT }} ${{ github.sha }}
+        MODIFIED_FILES=$(git diff --name-only $FIRST_COMMIT ${{ github.sha }})
+        echo "$MODIFIED_FILES"
+        echo "MODIFIED_FILES=$MODIFIED_FILES" >> $GITHUB_ENV  # Save the list of modified files to an environment variable
+
+    - name: Create directory for modified files
+      run: mkdir -p modified_files  # Create a directory to store the modified files
+
+    - name: Copy modified files to directory
+      run: |
+        for file in $MODIFIED_FILES; do
+          mkdir -p $(dirname "modified_files/$file")  # Create necessary directories
+          cp "$file" "modified_files/$file"  # Copy the modified files to the new directory
+        done
+
+    - name: Create zip archive of modified files
+      run: zip -r modified_files.zip modified_files  # Create a zip archive of the modified files
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: modified-files-archive
+        path: modified_files.zip
