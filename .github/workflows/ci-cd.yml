@@ -72,8 +72,23 @@ jobs:
           zip -r modified_files.zip "$file"
         done
 
-    - name: Upload artifact with environment name
+    - name: Upload artifact with environment name and runner ID
       uses: actions/upload-artifact@v3
       with:
-        name: modified-files-archive-${{ env.ENVIRONMENT }}
+        name: modified-files-archive-${{ env.ENVIRONMENT }}-${{ runner.name }}  # Add runner name to artifact
         path: modified_files.zip
+
+  download_artifact:
+    needs: build  # Make sure this job runs after build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download artifact with environment name and runner ID
+      uses: actions/download-artifact@v3
+      with:
+        name: modified-files-archive-${{ needs.build.outputs.ENVIRONMENT }}-${{ runner.name }}  # Use environment name and runner ID
+        path: downloaded_files  # Where the artifact will be downloaded
+
+    - name: Extract and list downloaded files
+      run: |
+        unzip downloaded_files/modified_files.zip -d extracted_files  # Extract the artifact
+        ls extracted_files  # List the extracted files for verification
