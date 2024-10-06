@@ -21,7 +21,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
       with:
-        fetch-depath: 0
+        fetch-depth: 0  # Corrected typo here to fetch the full history
 
     - name: List modified files
       run: |
