@@ -122,10 +122,21 @@ jobs:
           name: gamma_modified_files
           path: gamma.zip
 
+
+  environment-prod:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: 
+      name: prod  # Manual approval required for prod
+    steps:
+      - name: Deploy to Prod
+        run: echo "Deploying to production server..."        
+  
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && ( startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/feature/') || startsWith(github.ref, 'refs/heads/main/') )  
+    if: github.event_name == 'push' && ( startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/feature/') || startsWith(github.ref, 'refs/heads/main/') )
     steps:
       - name: Download Alpha files
         if: needs.build.outputs.alpha_exists == 'true'
@@ -160,6 +171,6 @@ jobs:
             fi
           done
   
-      - name: Deployment into server
+      - name: Deployment into ${{ env.ENVIRONMENT }} environment
         run: |
           echo "Deploying to the ${{ env.ENVIRONMENT }} environment..."
