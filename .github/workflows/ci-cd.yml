@@ -17,6 +17,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      alpha_exists: ${{ steps.set_programs.outputs.alpha_exists }}
+      beta_exists: ${{ steps.set_programs.outputs.beta_exists }}
+      gamma_exists: ${{ steps.set_programs.outputs.gamma_exists }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -118,22 +122,25 @@ jobs:
           path: gamma.zip
 
   deploy:
-    needs: build  # Ensure this job runs after build
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Download Alpha files
+        if: needs.build.outputs.alpha_exists == 'true'
         uses: actions/download-artifact@v4
         with:
           name: alpha_modified_files
           path: downloaded_files/alpha
 
       - name: Download Beta files
+        if: needs.build.outputs.beta_exists == 'true'
         uses: actions/download-artifact@v4
         with:
           name: beta_modified_files
           path: downloaded_files/beta
 
       - name: Download Gamma files
+        if: needs.build.outputs.gamma_exists == 'true'
         uses: actions/download-artifact@v4
         with:
           name: gamma_modified_files
