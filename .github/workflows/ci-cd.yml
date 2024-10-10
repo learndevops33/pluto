@@ -125,7 +125,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && ( github.ref == 'refs/heads/release/*' || github.ref == 'refs/heads/feature/*')
+    if: github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/feature/'))
     steps:
       - name: Download Alpha files
         if: needs.build.outputs.alpha_exists == 'true'
@@ -160,8 +160,6 @@ jobs:
             fi
           done
   
-
-
       - name: Deployment into server
         run: |
           echo "Deploying to the ${{ env.ENVIRONMENT }} environment..."
