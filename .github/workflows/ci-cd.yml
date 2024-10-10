@@ -125,7 +125,9 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && ( startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/feature/') || startsWith(github.ref, 'refs/heads/main/') )  
+    environment:
+      name: ${{ env.ENVIRONMENT }}  
+    if: github.event_name == 'push' && ( startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/feature/') || startsWith(github.ref, 'refs/heads/main/') )
     steps:
       - name: Download Alpha files
         if: needs.build.outputs.alpha_exists == 'true'
