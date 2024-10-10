@@ -48,15 +48,10 @@ jobs:
       - name: Show selected environment
         run: echo "Deployment environment is $ENVIRONMENT"
 
-      - name: Find the first commit of the branch
-        run: |
-          FIRST_COMMIT=$(git rev-list --boundary HEAD...origin/main | grep "^-" | head -n 1 | sed 's/^-//')
-          echo "FIRST_COMMIT=$FIRST_COMMIT" >> $GITHUB_ENV
-
       - name: List all modified files in the branch
         id: changed_files
         run: |
-          echo "The following files were modified in this branch:"
+          FIRST_COMMIT=$(git rev-list --boundary HEAD...origin/main | grep "^-" | head -n 1 | sed 's/^-//')
           MODIFIED_FILES=$(git diff --name-only $FIRST_COMMIT ${{ github.sha }})
           echo "$MODIFIED_FILES"
           echo "$MODIFIED_FILES" | tr '\n' ',' > files_list.txt
@@ -89,11 +84,11 @@ jobs:
             if [ ${#FILES[@]} -gt 0 ]; then
               zip -r "$ZIP_NAME" "${FILES[@]}"
               echo "Zipped $PROGRAM_NAME files into $ZIP_NAME"
-              echo "Uploading $ZIP_NAME as artifact..."
               mv "$ZIP_NAME" "$PROGRAM_NAME.zip"
-              echo "$PROGRAM_NAME.zip"
+              echo "::set-output name=${PROGRAM_NAME}_exists::true"
             else
               echo "No modified files for $PROGRAM_NAME."
+              echo "::set-output name=${PROGRAM_NAME}_exists::false"
             fi
           }
 
@@ -102,61 +97,22 @@ jobs:
           zip_and_upload "gamma" GAMMA_FILES[@]
 
       - name: Upload Alpha files
-        if: steps.set_programs.outputs.alpha != ''
+        if: steps.set_programs.outputs.alpha_exists == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: alpha_modified_files
           path: alpha.zip
 
       - name: Upload Beta files
-        if: steps.set_programs.outputs.beta != ''
+        if: steps.set_programs.outputs.beta_exists == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: beta_modified_files
           path: beta.zip
 
       - name: Upload Gamma files
-        if: steps.set_programs.outputs.gamma != ''
+        if: steps.set_programs.outputs.gamma_exists == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: gamma_modified_files
           path: gamma.zip
-
-  deploy:
-    needs: build  # Ensure this job runs after build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download Alpha files
-        uses: actions/download-artifact@v4
-        with:
-          name: alpha_modified_files
-          path: downloaded_files/alpha
-
-      - name: Download Beta files
-        uses: actions/download-artifact@v4
-        with:
-          name: beta_modified_files
-          path: downloaded_files/beta
-
-      - name: Download Gamma files
-        uses: actions/download-artifact@v4
-        with:
-          name: gamma_modified_files
-          path: downloaded_files/gamma
-
-      - name: Extract and list downloaded files
-        run: |
-          echo "Extracting and listing downloaded files..."
-          for program in alpha beta gamma; do
-            if [ -f "downloaded_files/$program.zip" ]; then
-              unzip "downloaded_files/$program.zip" -d "extracted_$program"
-              echo "Contents of $program.zip:"
-              ls "extracted_$program"
-            else
-              echo "Artifact $program.zip does not exist."
-            fi
-          done
-
-      - name: Deployment into server
-        run: |
-          echo "Deploying to the ${{ env.ENVIRONMENT }} environment..."
