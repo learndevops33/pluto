@@ -1,7 +1,7 @@
 name: mock CI/CD
 
 on:
-  workflow_dispatch: 
+  workflow_dispatch:
   push:
     branches:
       - 'feature/*'
@@ -122,12 +122,10 @@ jobs:
           name: gamma_modified_files
           path: gamma.zip
 
-  deploy:
+  deploy-dev:
     needs: build
     runs-on: ubuntu-latest
-    environment:
-      name: ${{ env.ENVIRONMENT }}  
-    if: github.event_name == 'push' && ( startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/feature/') || startsWith(github.ref, 'refs/heads/main/') )
+    if: github.ref == 'refs/heads/feature/*'
     steps:
       - name: Download Alpha files
         if: needs.build.outputs.alpha_exists == 'true'
@@ -150,18 +148,65 @@ jobs:
           name: gamma_modified_files
           path: downloaded_files/gamma
 
-      - name: Extract and list downloaded files
-        run: |
-          echo "Listing downloaded files..."
-          for program in alpha beta gamma; do
-            if [ -d "downloaded_files/$program" ]; then
-              echo "Contents of $program artifact:"
-              ls "downloaded_files/$program"
-            else
-              echo "Artifact for $program does not exist."
-            fi
-          done
-  
-      - name: Deployment into server
-        run: |
-          echo "Deploying to the ${{ env.ENVIRONMENT }} environment..."
+      - name: Deploy to Dev environment
+        run: echo "Deploying to Dev environment..."
+
+  deploy-uat:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/release/*'
+    steps:
+      - name: Download Alpha files
+        if: needs.build.outputs.alpha_exists == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: alpha_modified_files
+          path: downloaded_files/alpha
+
+      - name: Download Beta files
+        if: needs.build.outputs.beta_exists == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: beta_modified_files
+          path: downloaded_files/beta
+
+      - name: Download Gamma files
+        if: needs.build.outputs.gamma_exists == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: gamma_modified_files
+          path: downloaded_files/gamma
+
+      - name: Deploy to UAT environment
+        run: echo "Deploying to UAT environment..."
+
+  deploy-prod:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: prod  # Manual approval for production deployment
+    steps:
+      - name: Download Alpha files
+        if: needs.build.outputs.alpha_exists == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: alpha_modified_files
+          path: downloaded_files/alpha
+
+      - name: Download Beta files
+        if: needs.build.outputs.beta_exists == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: beta_modified_files
+          path: downloaded_files/beta
+
+      - name: Download Gamma files
+        if: needs.build.outputs.gamma_exists == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: gamma_modified_files
+          path: downloaded_files/gamma
+
+      - name: Deploy to Prod environment
+        run: echo "Deploying to Prod environment..."
