@@ -116,3 +116,42 @@ jobs:
         with:
           name: gamma_modified_files
           path: gamma.zip
+
+  deploy:
+    needs: build  # Ensure this job runs after build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Alpha files
+        uses: actions/download-artifact@v4
+        with:
+          name: alpha_modified_files
+          path: downloaded_files/alpha
+
+      - name: Download Beta files
+        uses: actions/download-artifact@v4
+        with:
+          name: beta_modified_files
+          path: downloaded_files/beta
+
+      - name: Download Gamma files
+        uses: actions/download-artifact@v4
+        with:
+          name: gamma_modified_files
+          path: downloaded_files/gamma
+
+      - name: Extract and list downloaded files
+        run: |
+          echo "Extracting and listing downloaded files..."
+          for program in alpha beta gamma; do
+            if [ -f "downloaded_files/$program.zip" ]; then
+              unzip "downloaded_files/$program.zip" -d "extracted_$program"
+              echo "Contents of $program.zip:"
+              ls "extracted_$program"
+            else
+              echo "Artifact $program.zip does not exist."
+            fi
+          done
+
+      - name: Deployment into server
+        run: |
+          echo "Deploying to the ${{ env.ENVIRONMENT }} environment..."
