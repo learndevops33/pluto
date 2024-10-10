@@ -150,14 +150,15 @@ jobs:
         run: |
           echo "Extracting and listing downloaded files..."
           for program in alpha beta gamma; do
-            if [ -f "downloaded_files/$program.zip" ]; then
-              unzip "downloaded_files/$program.zip" -d "extracted_$program"
-              echo "Contents of $program.zip:"
+            if [ -f "downloaded_files/$program/$program_modified_files.zip" ]; then
+              unzip "downloaded_files/$program/$program_modified_files.zip" -d "extracted_$program"
+              echo "Contents of $program_modified_files.zip:"
               ls "extracted_$program"
             else
-              echo "Artifact $program.zip does not exist."
+              echo "Artifact for $program does not exist."
             fi
           done
+
 
       - name: Deployment into server
         run: |
