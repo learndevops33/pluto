@@ -27,9 +27,9 @@ jobs:
         id: set_env
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            BRANCH="${{ github.head_ref }}"
+            BRANCH="${{ github.head_ref }}";
           else
-            BRANCH="${{ github.ref_name }}"
+            BRANCH="${{ github.ref_name }}";
           fi
 
           if [[ "$BRANCH" == feature/* || "$BRANCH" == bugfix/* ]]; then
@@ -90,7 +90,8 @@ jobs:
               zip -r "$ZIP_NAME" "${FILES[@]}"
               echo "Zipped $PROGRAM_NAME files into $ZIP_NAME"
               echo "Uploading $ZIP_NAME as artifact..."
-              echo "##[upload-artifact]name=${ZIP_NAME},path=${ZIP_NAME}" >> $GITHUB_ENV
+              mv "$ZIP_NAME" "$PROGRAM_NAME.zip"
+              echo "$PROGRAM_NAME.zip"
             else
               echo "No modified files for $PROGRAM_NAME."
             fi
@@ -100,41 +101,59 @@ jobs:
           zip_and_upload "beta" BETA_FILES[@]
           zip_and_upload "gamma" GAMMA_FILES[@]
 
+      - name: Upload Alpha files
+        if: steps.set_programs.outputs.alpha != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpha_modified_files
+          path: alpha.zip
+
+      - name: Upload Beta files
+        if: steps.set_programs.outputs.beta != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: beta_modified_files
+          path: beta.zip
+
+      - name: Upload Gamma files
+        if: steps.set_programs.outputs.gamma != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: gamma_modified_files
+          path: gamma.zip
+
   deploy:
     needs: build  # Ensure this job runs after build
     runs-on: ubuntu-latest
     steps:
-      - name: Download individual artifacts for deployment
-        run: |
-          echo "Downloading artifacts..."
-          for program in alpha beta gamma; do
-            ARTIFACT_NAME="${program}_modified_files.zip"
-            echo "Downloading artifact: $ARTIFACT_NAME"
-            # Correctly call the action to download the artifact
-            echo "##[download-artifact]name=${ARTIFACT_NAME},path=downloaded_files"
-          done
+      - name: Download Alpha files
+        uses: actions/download-artifact@v4
+        with:
+          name: alpha_modified_files
+          path: downloaded_files/alpha
 
-      - name: Download artifacts using actions
-        run: |
-          for program in alpha beta gamma; do
-            ARTIFACT_NAME="${program}_modified_files.zip"
-            echo "Downloading artifact: $ARTIFACT_NAME"
-            # This step downloads the artifact
-            echo "##[download-artifact]name=${ARTIFACT_NAME},path=downloaded_files"
-          done
-        shell: bash
+      - name: Download Beta files
+        uses: actions/download-artifact@v4
+        with:
+          name: beta_modified_files
+          path: downloaded_files/beta
+
+      - name: Download Gamma files
+        uses: actions/download-artifact@v4
+        with:
+          name: gamma_modified_files
+          path: downloaded_files/gamma
 
       - name: Extract and list downloaded files
         run: |
           echo "Extracting and listing downloaded files..."
           for program in alpha beta gamma; do
-            ARTIFACT_NAME="${program}_modified_files.zip"
-            if [ -f "downloaded_files/$ARTIFACT_NAME" ]; then
-              unzip "downloaded_files/$ARTIFACT_NAME" -d "extracted_$program"
-              echo "Contents of $ARTIFACT_NAME:"
+            if [ -f "downloaded_files/$program.zip" ]; then
+              unzip "downloaded_files/$program.zip" -d "extracted_$program"
+              echo "Contents of $program.zip:"
               ls "extracted_$program"
             else
-              echo "Artifact $ARTIFACT_NAME does not exist."
+              echo "Artifact $program.zip does not exist."
             fi
           done
 
